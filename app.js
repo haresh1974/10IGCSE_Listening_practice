@@ -66,31 +66,30 @@ const nrm = t => t.toLowerCase().replace(/'/g, '’').replace(/[^a-zà-ÿœ’0-
 let PT = null;
 function phraseTokens() { if (!PT) PT = (D.phr || []).map((p, i) => ({ i, t: p[0].split(/\s+/).map(nrm).filter(Boolean) })).sort((a, b) => b.t.length - a.t.length); return PT; }
 function pageChunks(p) { // word index -> phrase index
-  const ws = D.words[p] || [], tk = ws.map(w => nrm(w[0])), m = {};
+  const ws = D.words[p] || [], idx = [], tk = []; ws.forEach((w, i) => { const t = nrm(w[0]); if (t) { idx.push(i); tk.push(t); } }); const m = {};
   phraseTokens().forEach(ph => {
     for (let i = 0; i + ph.t.length <= tk.length; i++) {
-      let ok = true; for (let j = 0; j < ph.t.length; j++) if (tk[i + j] !== ph.t[j] || m[i + j] != null) { ok = false; break; }
-      if (ok) for (let j = 0; j < ph.t.length; j++) m[i + j] = ph.i;
+      let ok = true; for (let j = 0; j < ph.t.length; j++) if (tk[i + j] !== ph.t[j] || m[idx[i + j]] != null) { ok = false; break; }
+      if (ok) for (let j = 0; j < ph.t.length; j++) m[idx[i + j]] = ph.i;
     }
   });
   return m;
 }
 function drawChunks(p, ov) {
   const ws = D.words[p] || [], m = pageChunks(p); S.pc = S.pc || {}; S.pc[p] = m;
-  let run = null; const flush = () => { if (!run) return; const u = document.createElement('u'); u.className = 'ph';
-    u.style.left = run.x0 / D.W * 100 + '%'; u.style.width = (run.x1 - run.x0) / D.W * 100 + '%'; u.style.top = (run.y1 - 0.5) / D.H * 100 + '%'; u.style.height = '0'; ov.appendChild(u); run = null; };
+  let run = null; const flush = () => { if (!run) return; const u = document.createElement('u'); u.className = 'ph'; u.dataset.ph = run.ph; u.setAttribute('role', 'button'); u.title = 'Tap for the meaning of this phrase';
+    u.style.left = run.x0 / D.W * 100 + '%'; u.style.width = (run.x1 - run.x0) / D.W * 100 + '%'; u.style.top = (run.y1 - 4) / D.H * 100 + '%'; u.style.height = 11 / D.H * 100 + '%'; ov.appendChild(u); run = null; };
   ws.forEach((w, i) => {
     if (m[i] == null) { flush(); return; }
     if (run && run.ph === m[i] && Math.abs(w[4] - run.y1) < 3) { run.x1 = w[3]; }
     else { flush(); run = { ph: m[i], x0: w[1], x1: w[3], y1: w[4] }; }
-    const nx = m[i + 1]; if (nx !== m[i]) flush();
+    if (m[i + 1] !== m[i]) flush();
   });
   flush();
 }
-
 /* ---------- pages ---------- */
 function buildPages() {
-  const host = $('#pages'); host.innerHTML = '<div id="pagesIn"></div>'; const inn = $('#pagesIn'); inn.style.width = S.zoom + '%';
+  const host = $('#pages'); host.innerHTML = '<div id="legend">🟠 <b>Orange dotted line</b> = a phrase (read it as one chunk): tap the <b>line</b> for the phrase meaning · tap a <b>word</b> for that word only.</div><div id="pagesIn"></div>'; const inn = $('#pagesIn'); inn.style.width = S.zoom + '%';
   const W = D.W, H = D.H;
   D.pages.forEach(p => {
     const pg = document.createElement('div'); pg.className = 'pg'; pg.dataset.p = p;
@@ -142,10 +141,10 @@ function pagePointer(e, pg, hover) {
   const raw = w[0].replace(/^[^A-Za-zÀ-ÿŒœ’]+|[^A-Za-zÀ-ÿŒœ’]+$/g, ''); const frac = Math.min(.999, Math.max(0, (x - w[1]) / Math.max(1, w[3] - w[1])));
   const parts = raw.split(/(?<=’)|-/).filter(Boolean); let acc = 0, pick = parts[0] || raw; const tot = raw.length;
   for (const pt of parts) { acc += pt.length; if (frac * tot < acc) { pick = pt; break; } }
-  const el = flash(pg, w[1], w[2], w[3], w[4]); const wi = (D.words[p] || []).indexOf(w), ph = (S.pc && S.pc[p] && S.pc[p][wi]);
-  showWord(raw.toLowerCase().includes('aujourd’hui') ? 'aujourd’hui' : pick, el, ph);
+  const el = flash(pg, w[1], w[2], w[3], w[4]); showWord(raw.toLowerCase().includes('aujourd’hui') ? 'aujourd’hui' : pick, el);
 }
 function onPageClick(e) {
+  const uu = e.target.closest && e.target.closest('u.ph'); if (uu) { if (aid()) showChunk(+uu.dataset.ph, uu); return; }
   const t = e.target.closest('button'); if (!t) { closePick(); const pg = e.target.closest('.pg'); if (pg) pagePointer(e, pg, false); return; }
   if (t.dataset.a === 'again') { const q = byN(+t.dataset.n); if (S.exam) return; jumpTo(q.ch); return; }
   if (t.dataset.a === 'trq') { const q = byN(+t.dataset.n); if (S.exam) return; au.pause(); openTr(q.ch); return; }
@@ -189,7 +188,7 @@ function paintDx() {
   $$('.pill').forEach(p => { const b = p.querySelector('[data-a=dx]'); b.classList.toggle('on', !!S.dx[+p.dataset.n]); });
   Object.keys(S.dx).forEach(k => {
     const q = byN(+k); const pg = $(`.pg[data-p="${q.page}"] .ov`); if (!pg) return;
-    addCallout(pg, q);
+    addCallout(pg, q); return;
     q.dx.forEach(d => {
       if (!d.L) return;
       if (q.kind === 'letter') { const r = D.stm && D.stm[d.L]; if (r) addMark(pg, r, d.kind); }
@@ -208,15 +207,15 @@ function addCallout(ov, q) {
   const pl = ov.querySelector(`.pill[data-n="${q.n}"]`); if (!pl) return;
   const c = document.createElement('div'); c.className = 'dxc'; c.dataset.n = q.n;
   c.style.right = pl.style.right; c.style.top = `calc(${pl.style.top} + 4.4cqw)`;
-  const row = (d, tag) => `<div class="it">${d.L && d.L !== '_' ? `<span class="L ${tag}">${d.L}</span>` : ''}<span class="en">${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</span><span class="fr">🇫🇷 ${esc(d.fr || '')}</span></div>`;
+  const row = (d, tag, chip) => `<div class="it">${chip && d.L && d.L !== '_' ? `<span class="L ${tag}">${d.L}</span>` : ''}<span class="en">${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</span><span class="fr">🇫🇷 ${esc(d.fr || '')}</span></div>`;
   const heard = q.dx.filter(d => d.kind !== 'none'), none = q.dx.filter(d => d.kind === 'none');
   let h = '<b>⚠ Possible distractors <span class="sub">(heard but not related to the question)</span></b><span class="sub">Les pièges : mots entendus mais sans rapport avec la question</span>';
-  if (heard.length) heard.forEach(d => { h += row(d, 'hd'); }); else if (!none.length) h += '<div class="it"><span class="en">No tricky word here. Listen for the key idea.</span><span class="fr">🇫🇷 Pas de mot piège ici. Écoutez l’idée principale.</span></div>';
-  if (none.length) { h += '<b class="nn">∅ Not mentioned in the recording <span class="sub">(Jamais mentionné)</span></b>'; none.forEach(d => { h += row(d, 'nm'); }); }
+  if (heard.length) heard.forEach(d => { h += row(d, 'hd', q.kind === 'letter'); }); else if (!none.length) h += '<div class="it"><span class="en">No tricky word here. Listen for the key idea.</span><span class="fr">🇫🇷 Pas de mot piège ici. Écoutez l’idée principale.</span></div>';
+  if (none.length) h += '<div class="it nn2"><span class="en">Some of the options are never mentioned in the recording at all.</span><span class="fr">🇫🇷 Certaines options ne sont jamais mentionnées dans l’enregistrement.</span></div>';
   const k = S.key && S.key[q.n];
   if (k && S.reveal) {
     h += `<b class="ok">✅ Answer: ${k.a.join(' + ')}</b>`;
-    q.opts.filter(o => !k.a.includes(o.L)).forEach(o => { if (q.dx.some(d => d.L === o.L) && !(k.x[o.L] && k.x[o.L].k !== 'none')) return; const x = (k.x || {})[o.L]; if (x) h += row({ L: o.L, note: x.note, fr: x.fr, quote: x.quote }, x.k === 'none' ? 'nm' : 'hd'); });
+    q.opts.filter(o => !k.a.includes(o.L)).forEach(o => { if (q.dx.some(d => d.L === o.L) && !(k.x[o.L] && k.x[o.L].k !== 'none')) return; const x = (k.x || {})[o.L]; if (x) h += row({ L: o.L, note: x.note, fr: x.fr, quote: x.quote }, x.k === 'none' ? 'nm' : 'hd', true); });
   }
   h += `<div class="acts"><button data-a="again" data-n="${q.n}">🔁 Listen again · Réécouter</button><button data-a="trq" data-n="${q.n}">📄 Transcript</button></div>`;
   c.innerHTML = h + '<button class="cx" data-a="cx">✕</button>'; ov.appendChild(c);
@@ -244,23 +243,23 @@ function renderTr(ch) {
     (rng[li] || []).forEach(r => { for (let i = r[0]; i < r[1] && i < t.length; i++) cls[i] = r[2]; });
     let out = '', last = 0; const spans = [];
     t.replace(WRE, (m, off) => { spans.push([off, off + m.length]); return m; });
-    const key = i => cls[i] + '|' + pcl[i];
-    const wrap = (i, j, word, isW) => { const c = cls[i], p = pcl[i]; const base = [isW ? 'w' : '', c, p >= 0 ? 'ph trph' : ''].filter(Boolean).join(' ');
-      const tx = esc(t.slice(i, j)); if (!isW) return base ? `<span class="${base}">${tx}</span>` : tx;
-      return `<span class="${base}" data-w="${esc(word)}"${p >= 0 ? ` data-ph="${p}"` : ''}>${tx}</span>`; };
-    const seg = (a, b) => { let s = '', i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; s += wrap(i, j, '', false); i = j; } return s; };
+    const key = i => cls[i] + '|' + pcl[i]; const pieces = [];
+    const wrap = (i, j, word, isW) => { const c = cls[i]; const base = [isW ? 'w' : '', c].filter(Boolean).join(' '); const tx = esc(t.slice(i, j));
+      pieces.push([pcl[i], isW ? `<span class="${base}" data-w="${esc(word)}">${tx}</span>` : (base ? `<span class="${base}">${tx}</span>` : tx)]); };
+    const seg = (a, b) => { let i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; wrap(i, j, '', false); i = j; } };
     spans.forEach(([a, b]) => {
-      out += seg(last, a);
-      let i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; out += wrap(i, j, t.slice(a, b), true); i = j; }
+      seg(last, a);
+      let i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; wrap(i, j, t.slice(a, b), true); i = j; }
       last = b;
     });
-    out += seg(last, t.length);
+    seg(last, t.length);
+    for (let k = 0; k < pieces.length;) { const p0 = pieces[k][0]; if (p0 < 0) { out += pieces[k][1]; k++; continue; } let e = k, inner = ''; while (e < pieces.length && pieces[e][0] === p0) { inner += pieces[e][1]; e++; } out += `<span class="ck" data-ph="${p0}">${inner}</span>`; k = e; }
     const nar = ln.s === 'N';
     h += `<p class="ln ${nar ? 'nar' : ''}"><span class="sp">${nar ? '🎙' : esc(ln.s)}</span>${out}</p>`;
   });
   $('#trBody').innerHTML = h; $('#trBody').scrollTop = 0;
 }
-$('#trBody').addEventListener('click', e => { const w = e.target.closest('.w'); if (w) { if (aid()) showPop(w.dataset.w, w, w.dataset.ph != null ? +w.dataset.ph : null); } else hidePop(); });
+$('#trBody').addEventListener('click', e => { const w = e.target.closest('.w'); if (w) { if (aid()) showPop(w.dataset.w, w); return; } const ck = e.target.closest('.ck'); if (ck) { if (aid()) showChunk(+ck.dataset.ph, ck); } else hidePop(); });
 function lookup(w) {
   const G = window.GLOSS || {}; let k = w.toLowerCase().replace(/’$/, '');
   if (w.toLowerCase() === 'aujourd’hui') k = 'aujourd’hui';
@@ -268,13 +267,13 @@ function lookup(w) {
   for (const alt of [k.replace(/s$/, ''), k.replace(/x$/, ''), k.replace(/es$/, 'e')]) if (G[alt]) return G[alt];
   return null;
 }
-function showWord(w, el, ph) { showPop(w, el, ph); }
+function showWord(w, el) { showPop(w, el); }
+function showChunk(i, el) { const ph = D.phr[i]; showPopHtml(`<div class="pb">🔗 <b>${esc(ph[0])}</b></div>= ${esc(ph[1])}<small>Phrase · read it as one chunk</small>`, el); }
 function showPopHtml(html, el) { const p = $('#pop'); const r = el.getBoundingClientRect(); p.innerHTML = html; place(p, r); }
-function place(p, r) { p.hidden = false; const pw = p.offsetWidth, phh = p.offsetHeight; let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - ph - 8; if (y < 8) y = r.bottom + 8; p.style.left = x + 'px'; p.style.top = y + 'px'; }
-function showPop(w, el, ph) {
+function place(p, r) { p.hidden = false; const pw = p.offsetWidth, phh = p.offsetHeight; let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - phh - 8; if (y < 8) y = r.bottom + 8; p.style.left = x + 'px'; p.style.top = y + 'px'; }
+function showPop(w, el) {
   const g = lookup(w), p = $('#pop'); const r = el.getBoundingClientRect();
-  const pb = ph != null && D.phr && D.phr[ph] ? `<div class="pb">🔗 <b>${esc(D.phr[ph][0])}</b> = ${esc(D.phr[ph][1])}</div>` : '';
-  p.innerHTML = pb + (g ? `<b>${esc(w)}</b> — ${esc(g[0])}<small>${esc(g[1] || '')}</small>` : `<b>${esc(w)}</b><small>No entry for this word yet.</small>`);
+  p.innerHTML = (g ? `<b>${esc(w)}</b> — ${esc(g[0])}<small>${esc(g[1] || '')}</small>` : `<b>${esc(w)}</b><small>No entry for this word yet.</small>`);
   p.hidden = false; const pw = p.offsetWidth, phh = p.offsetHeight;
   let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - phh - 8; if (y < 8) y = r.bottom + 8;
   p.style.left = x + 'px'; p.style.top = y + 'px';
