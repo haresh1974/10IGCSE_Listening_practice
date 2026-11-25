@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>IGCSE French Listening · Learn French with Haresh Sir</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header id="top">
+  <button id="back" class="ib" title="Back" aria-label="Back">‹</button>
+  <div class="ttl"><b id="ptitle">IGCSE French · Listening</b><small id="psub"></small></div>
+  <button id="btnMode" class="tg" title="Practice or exam conditions">🎧 Practice</button>
+  <button id="btnZoomO" class="ib" title="Smaller">A−</button>
+  <button id="btnZoomI" class="ib" title="Bigger">A+</button>
+  <button id="btnCheck" class="ib" title="Check my answers" hidden>📋</button>
+  <button id="btnLock" class="ib" title="Teacher">🔒</button>
+</header>
+<div id="audiobar">
+  <button id="bPlay" class="pl" aria-label="Play">▶</button>
+  <button id="bBack" class="ib sk" title="Back 10 seconds">⏪10</button>
+  <button id="bFwd" class="ib sk" title="Forward 10 seconds">10⏩</button>
+  <input id="seek" type="range" min="0" max="1000" value="0" aria-label="Position">
+  <span id="time">0:00</span>
+  <select id="chap" title="Jump to"></select>
+  <select id="speed" title="Speed"><option value="0.8">0.8×</option><option value="1" selected>1×</option><option value="1.2">1.2×</option></select>
+  <button id="bTr" class="tg" title="Pause and read the transcript">📄 Transcript</button>
+</div>
+<div id="examnote" hidden>🕑 Exam conditions: the recording plays once, you cannot pause, rewind or read the transcript. Tick your answers on the paper.</div>
+<main id="wrap">
+  <section id="pages"></section>
+  <aside id="tr" hidden>
+    <div class="trh"><b>📄 Transcript</b><select id="trChap"></select><button id="trX" class="ib">✕</button></div>
+    <div id="trBody"></div>
+  </aside>
+</main>
+<div id="pop" hidden></div>
+<footer id="sheet" hidden><div id="shBar"><b id="shTitle"></b><span id="shTabs"></span><button id="shX" class="ib">✕</button></div><div id="shBody"></div></footer>
+<div id="modal" hidden><div class="card" id="modalCard"></div></div>
+<audio id="au" preload="metadata"></audio>
+<script src="data/gloss_w25_11.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
