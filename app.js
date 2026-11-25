@@ -3,7 +3,7 @@
 const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
 const PID = new URLSearchParams(location.search).get('p') || 'w25_11';
 const au = $('#au');
-const S = { ans: {}, dx: {}, key: null, reveal: false, exam: false, zoom: 100, trCh: 'c1', sheetQ: 0, tab: 'dx', noHelp: false, prepared: false };
+const S = { ans: {}, dx: {}, key: null, reveal: false, exam: false, zoom: 100, trCh: 'c1', noHelp: false, prepared: false };
 let D = null;
 const sget = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
 const sset = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* none */ } };
@@ -61,6 +61,33 @@ function openPrep() {
 }
 $('#helpnote').onclick = () => lockedChoice(false);
 
+/* ---------- chunks (orange dotted = read as one phrase) ---------- */
+const nrm = t => t.toLowerCase().replace(/'/g, '’').replace(/[^a-zà-ÿœ’0-9-]/g, '');
+let PT = null;
+function phraseTokens() { if (!PT) PT = (D.phr || []).map((p, i) => ({ i, t: p[0].split(/\s+/).map(nrm).filter(Boolean) })).sort((a, b) => b.t.length - a.t.length); return PT; }
+function pageChunks(p) { // word index -> phrase index
+  const ws = D.words[p] || [], tk = ws.map(w => nrm(w[0])), m = {};
+  phraseTokens().forEach(ph => {
+    for (let i = 0; i + ph.t.length <= tk.length; i++) {
+      let ok = true; for (let j = 0; j < ph.t.length; j++) if (tk[i + j] !== ph.t[j] || m[i + j] != null) { ok = false; break; }
+      if (ok) for (let j = 0; j < ph.t.length; j++) m[i + j] = ph.i;
+    }
+  });
+  return m;
+}
+function drawChunks(p, ov) {
+  const ws = D.words[p] || [], m = pageChunks(p); S.pc = S.pc || {}; S.pc[p] = m;
+  let run = null; const flush = () => { if (!run) return; const u = document.createElement('u'); u.className = 'ph';
+    u.style.left = run.x0 / D.W * 100 + '%'; u.style.width = (run.x1 - run.x0) / D.W * 100 + '%'; u.style.top = (run.y1 - 0.5) / D.H * 100 + '%'; u.style.height = '0'; ov.appendChild(u); run = null; };
+  ws.forEach((w, i) => {
+    if (m[i] == null) { flush(); return; }
+    if (run && run.ph === m[i] && Math.abs(w[4] - run.y1) < 3) { run.x1 = w[3]; }
+    else { flush(); run = { ph: m[i], x0: w[1], x1: w[3], y1: w[4] }; }
+    const nx = m[i + 1]; if (nx !== m[i]) flush();
+  });
+  flush();
+}
+
 /* ---------- pages ---------- */
 function buildPages() {
   const host = $('#pages'); host.innerHTML = '<div id="pagesIn"></div>'; const inn = $('#pagesIn'); inn.style.width = S.zoom + '%';
@@ -78,10 +105,10 @@ function buildPages() {
       });
       const pl = document.createElement('div'); pl.className = 'pill'; pl.dataset.n = q.n;
       pl.style.right = (W - q.pill.x - 2) / W * 100 + '%'; pl.style.top = q.pill.y / H * 100 + '%';
-      pl.innerHTML = '<button data-a="play" title="Play this part of the recording">▶</button><button data-a="dx" title="Show the distractors (wrong options)">🔍</button><button data-a="en" title="English meanings">🇬🇧</button>';
+      pl.innerHTML = '<button data-a="play" title="Play this part of the recording">▶</button><button data-a="dx" title="Show the distractors (wrong options)">🔍</button><button data-a="tr" title="Pause and read the transcript for this question">📄</button>';
       ov.appendChild(pl);
     });
-    inn.appendChild(pg);
+    drawChunks(p, ov); inn.appendChild(pg);
   });
   inn.addEventListener('click', onPageClick);
   inn.addEventListener('pointermove', e => { if (e.pointerType !== 'mouse') return; const pg = e.target.closest && e.target.closest('.pg'); if (!pg || e.target.closest('button')) return; const [x, y] = ptOf(e, pg); const pc = picAt(+pg.dataset.p, x, y);
@@ -115,16 +142,19 @@ function pagePointer(e, pg, hover) {
   const raw = w[0].replace(/^[^A-Za-zÀ-ÿŒœ’]+|[^A-Za-zÀ-ÿŒœ’]+$/g, ''); const frac = Math.min(.999, Math.max(0, (x - w[1]) / Math.max(1, w[3] - w[1])));
   const parts = raw.split(/(?<=’)|-/).filter(Boolean); let acc = 0, pick = parts[0] || raw; const tot = raw.length;
   for (const pt of parts) { acc += pt.length; if (frac * tot < acc) { pick = pt; break; } }
-  const el = flash(pg, w[1], w[2], w[3], w[4]); showWord(raw.toLowerCase().includes('aujourd’hui') ? 'aujourd’hui' : pick, el);
+  const el = flash(pg, w[1], w[2], w[3], w[4]); const wi = (D.words[p] || []).indexOf(w), ph = (S.pc && S.pc[p] && S.pc[p][wi]);
+  showWord(raw.toLowerCase().includes('aujourd’hui') ? 'aujourd’hui' : pick, el, ph);
 }
 function onPageClick(e) {
   const t = e.target.closest('button'); if (!t) { closePick(); const pg = e.target.closest('.pg'); if (pg) pagePointer(e, pg, false); return; }
+  if (t.dataset.a === 'cx') { const c = t.closest('.dxc'); delete S.dx[+c.dataset.n]; paintDx(); if (!$('#tr').hidden) renderTr(S.trCh); return; }
   const n = +(t.dataset.n || (t.closest('.pill') || {}).dataset?.n);
   if (t.closest('.pill')) {
     const a = t.dataset.a; const q = byN(n);
     if (a === 'play') { jumpTo(q.ch); }
     if (a === 'dx') { toggleDx(n); }
-    if (a === 'en') { if (aid()) openSheet(n, 'en'); }
+    if (a === 'tr') { if (aid()) { au.pause(); S.dx[n] = true; paintDx(); openTr(q.ch); setTimeout(() => { const t = $('#trBody .dq'); if (t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80); } }
+    if (a === 'sh') { return; }
     return;
   }
   const q = byN(n);
@@ -149,14 +179,15 @@ function toggleDx(n) {
   if (on && !aid()) return;
   if (q.kind === 'letter') { Object.keys(S.dx).forEach(k => { if (byN(+k).kind === 'letter') delete S.dx[k]; }); }
   if (on) S.dx[n] = true; else delete S.dx[n];
-  paintDx(); if (on) openSheet(n, 'dx'); else closeSheet();
+  paintDx();
   if (!$('#tr').hidden) renderTr(S.trCh);
 }
 function paintDx() {
-  $$('.dxm').forEach(e => e.remove());
+  $$('.dxm,.dxc').forEach(e => e.remove());
   $$('.pill').forEach(p => { const b = p.querySelector('[data-a=dx]'); b.classList.toggle('on', !!S.dx[+p.dataset.n]); });
   Object.keys(S.dx).forEach(k => {
     const q = byN(+k); const pg = $(`.pg[data-p="${q.page}"] .ov`); if (!pg) return;
+    addCallout(pg, q);
     q.dx.forEach(d => {
       if (!d.L) return;
       if (q.kind === 'letter') { const r = D.stm && D.stm[d.L]; if (r) addMark(pg, r); }
@@ -170,51 +201,19 @@ function addMark(ov, r) {
   d.textContent = '⚠'; ov.appendChild(d);
 }
 
-/* ---------- bottom sheet ---------- */
-function openSheet(n, tab) {
-  S.sheetQ = n; S.tab = tab; const q = byN(n);
-  $('#shTitle').innerHTML = `<b>Q${n}</b> ${esc(q.stem || (q.kind === 'two' ? 'Choose TWO correct statements' : ''))}`;
-  $('#shTabs').innerHTML = `<button data-t="dx" class="${tab === 'dx' ? 'on' : ''}">🔍 Distractors</button><button data-t="en" class="${tab === 'en' ? 'on' : ''}">🇬🇧 Meanings</button>`;
-  const b = $('#shBody');
-  if (tab === 'en') {
-    let h = '';
-    if (q.stem) h += `<div class="hint"><b>${esc(q.stem)}</b><br>${esc(q.stem_en)}</div>`;
-    else if (q.kind === 'two') h += '<div class="hint">Tick the <b>two</b> statements that are true.</div>';
-    h += `<div class="hint" style="background:#fff8e6;border-color:var(--amber)">${q.pic ? 'Listen for the word shown under each picture.' : 'Listen for these ideas in the recording.'}</div>`;
-    q.opts.forEach(o => { h += `<div class="opt"><span class="L">${o.L}</span><div><div class="fr">${esc(o.fr)}</div><div class="en">${esc(o.en)}</div></div></div>`; });
-    b.innerHTML = h;
-  } else {
-    let h = '<div class="hint" style="background:#fff4e0;border-color:var(--orange)"><b>⚠ Possible distractors</b><br>Words you will hear that sound right but are <b>not</b> the answer to this question.</div>';
-    if (!S.dx[n]) { S.dx[n] = true; paintDx(); }
-    if (!q.dx.length) h += '<div class="opt"><span class="L">✓</span><div>No tricky word in this question. Listen for the key idea and tick what you hear.</div></div>';
-    q.dx.forEach((d, i) => {
-      const o = d.L ? q.opts.find(o => o.L === d.L) : null;
-      h += `<div class="opt"><span class="L">${d.L || '⚠'}</span><div style="flex:1">${o ? `<div class="fr">${esc(o.fr)}</div><div class="en">${esc(o.en)}</div>` : ''}<div>${esc(d.note)}</div>` +
-        (d.quote ? `<div class="q">“${esc(d.quote)}”</div>` : '') + (d.hl && !S.exam ? `<button class="sbtn" data-sh="${i}">Show in transcript</button>` : '') + `</div><span class="b heard">Possible distractor</span></div>`;
-    });
-    if (S.key && S.key[n]) {
-      const a = S.key[n].a;
-      h += `<div class="hint" style="background:#effaf2;border-color:var(--green);margin-top:10px">✅ <b>Answer: ${a.join(' + ')}</b>` + (S.key[n].hl && S.key[n].hl.length && !S.exam ? ' <button class="sbtn" data-sh="*">Show the clue in the transcript</button>' : '') + '</div>';
-    }
-    b.innerHTML = h;
-  }
-  $('#sheet').hidden = false; document.body.classList.add('shOpen'); revealQ(n);
-}
-function closeSheet() { $('#sheet').hidden = true; document.body.classList.remove('shOpen'); }
-function revealQ(n) {
-  const q = byN(n); const sc = $('#pages'); let el = $(`.bx[data-n="${n}"],.lb[data-n="${n}"]`); if (q && q.kind === 'letter') el = $('.pg[data-p="' + q.page + '"]'); if (!el) return;
-  const r = el.getBoundingClientRect(), sr = sc.getBoundingClientRect();
-  sc.scrollTo({ top: sc.scrollTop + (r.top - sr.top) - (q && q.kind === 'letter' ? -(r.height * 0.43) : 150), behavior: 'smooth' });
-}
-$('#shX').onclick = () => { closeSheet(); };
-$('#shTabs').onclick = e => { const t = e.target.closest('button'); if (!t) return; if (t.dataset.t === 'dx') { if (!aid()) return; } else if (!aid()) return; openSheet(S.sheetQ, t.dataset.t); };
-$('#shBody').onclick = e => {
-  const b = e.target.closest('[data-sh]'); if (!b) return;
-  const q = byN(S.sheetQ); showInTranscript(q, b.dataset.sh);
-};
-function showInTranscript(q, which) {
-  if (S.exam) return; pauseAudio(); S.dx[q.n] = true; paintDx(); openTr(q.ch);
-  setTimeout(() => { const t = which === '*' ? $('#trBody .ev') : $('#trBody .dq'); if (t) t.scrollIntoView({ block: 'center', behavior: 'smooth' }); }, 80);
+/* ---------- distractor callout, next to the question ---------- */
+function addCallout(ov, q) {
+  const pl = ov.querySelector(`.pill[data-n="${q.n}"]`); if (!pl) return;
+  const c = document.createElement('div'); c.className = 'dxc'; c.dataset.n = q.n;
+  c.style.right = pl.style.right; c.style.top = `calc(${pl.style.top} + 4.4cqw)`;
+  let h = '<b>⚠ Possible distractors</b><span class="sub">heard but not related to the question</span>';
+  if (!q.dx.length) h += '<div class="it">Nothing tricky here. Listen for the key idea.</div>';
+  q.dx.forEach(d => {
+    const o = d.L ? q.opts.find(o => o.L === d.L) : null;
+    h += `<div class="it">${d.L ? `<span class="L">${d.L}</span>` : ''}${o && q.pic ? '' : ''}${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</div>`;
+  });
+  if (S.key && S.key[q.n]) h += `<div class="it ok">✅ Answer: ${S.key[q.n].a.join(' + ')}</div>`;
+  c.innerHTML = h + '<button class="cx" data-a="cx">✕</button>'; ov.appendChild(c);
 }
 
 /* ---------- transcript ---------- */
@@ -233,17 +232,20 @@ function renderTr(ch) {
   let h = '';
   lines.forEach((ln, li) => {
     if (ln.p) { h += `<div class="ps">⏸ ${esc(ln.p)}</div>`; return; }
-    const t = ln.t, cls = new Array(t.length).fill('');
+    const t = ln.t, cls = new Array(t.length).fill(''), pcl = new Array(t.length).fill(-1);
+    phraseTokens().forEach(ph => { const src = D.phr[ph.i][0]; const re = new RegExp('(?<![A-Za-zÀ-ÿŒœ’])' + src.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/’/g, "['’]").replace(/\s+/g, '\\s+') + '(?![A-Za-zÀ-ÿŒœ’])', 'ig'); let m;
+      while ((m = re.exec(t))) { if (pcl.slice(m.index, m.index + m[0].length).some(v => v >= 0)) continue; for (let i = m.index; i < m.index + m[0].length; i++) pcl[i] = ph.i; } });
     (rng[li] || []).forEach(r => { for (let i = r[0]; i < r[1] && i < t.length; i++) cls[i] = r[2]; });
     let out = '', last = 0; const spans = [];
     t.replace(WRE, (m, off) => { spans.push([off, off + m.length]); return m; });
-    const seg = (a, b) => { // plain run between words, split by highlight class
-      let s = ''; let i = a; while (i < b) { let j = i; while (j < b && cls[j] === cls[i]) j++; s += cls[i] ? `<span class="${cls[i]}">${esc(t.slice(i, j))}</span>` : esc(t.slice(i, j)); i = j; } return s; };
+    const key = i => cls[i] + '|' + pcl[i];
+    const wrap = (i, j, word, isW) => { const c = cls[i], p = pcl[i]; const base = [isW ? 'w' : '', c, p >= 0 ? 'ph trph' : ''].filter(Boolean).join(' ');
+      const tx = esc(t.slice(i, j)); if (!isW) return base ? `<span class="${base}">${tx}</span>` : tx;
+      return `<span class="${base}" data-w="${esc(word)}"${p >= 0 ? ` data-ph="${p}"` : ''}>${tx}</span>`; };
+    const seg = (a, b) => { let s = '', i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; s += wrap(i, j, '', false); i = j; } return s; };
     spans.forEach(([a, b]) => {
       out += seg(last, a);
-      // word may straddle a highlight boundary: wrap each class-run of the word separately
-      let i = a; while (i < b) { let j = i; while (j < b && cls[j] === cls[i]) j++; const wd = t.slice(a, b);
-        out += `<span class="w ${cls[i]}" data-w="${esc(wd)}">${esc(t.slice(i, j))}</span>`; i = j; }
+      let i = a; while (i < b) { let j = i; while (j < b && key(j) === key(i)) j++; out += wrap(i, j, t.slice(a, b), true); i = j; }
       last = b;
     });
     out += seg(last, t.length);
@@ -252,7 +254,7 @@ function renderTr(ch) {
   });
   $('#trBody').innerHTML = h; $('#trBody').scrollTop = 0;
 }
-$('#trBody').addEventListener('click', e => { const w = e.target.closest('.w'); if (w) { if (aid()) showPop(w.dataset.w, w); } else hidePop(); });
+$('#trBody').addEventListener('click', e => { const w = e.target.closest('.w'); if (w) { if (aid()) showPop(w.dataset.w, w, w.dataset.ph != null ? +w.dataset.ph : null); } else hidePop(); });
 function lookup(w) {
   const G = window.GLOSS || {}; let k = w.toLowerCase().replace(/’$/, '');
   if (w.toLowerCase() === 'aujourd’hui') k = 'aujourd’hui';
@@ -260,14 +262,15 @@ function lookup(w) {
   for (const alt of [k.replace(/s$/, ''), k.replace(/x$/, ''), k.replace(/es$/, 'e')]) if (G[alt]) return G[alt];
   return null;
 }
-function showWord(w, el) { showPop(w, el); }
+function showWord(w, el, ph) { showPop(w, el, ph); }
 function showPopHtml(html, el) { const p = $('#pop'); const r = el.getBoundingClientRect(); p.innerHTML = html; place(p, r); }
-function place(p, r) { p.hidden = false; const pw = p.offsetWidth, ph = p.offsetHeight; let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - ph - 8; if (y < 8) y = r.bottom + 8; p.style.left = x + 'px'; p.style.top = y + 'px'; }
-function showPop(w, el) {
+function place(p, r) { p.hidden = false; const pw = p.offsetWidth, phh = p.offsetHeight; let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - ph - 8; if (y < 8) y = r.bottom + 8; p.style.left = x + 'px'; p.style.top = y + 'px'; }
+function showPop(w, el, ph) {
   const g = lookup(w), p = $('#pop'); const r = el.getBoundingClientRect();
-  p.innerHTML = g ? `<b>${esc(w)}</b> — ${esc(g[0])}<small>${esc(g[1] || '')}</small>` : `<b>${esc(w)}</b><small>No entry for this word yet.</small>`;
-  p.hidden = false; const pw = p.offsetWidth, ph = p.offsetHeight;
-  let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - ph - 8; if (y < 8) y = r.bottom + 8;
+  const pb = ph != null && D.phr && D.phr[ph] ? `<div class="pb">🔗 <b>${esc(D.phr[ph][0])}</b> = ${esc(D.phr[ph][1])}</div>` : '';
+  p.innerHTML = pb + (g ? `<b>${esc(w)}</b> — ${esc(g[0])}<small>${esc(g[1] || '')}</small>` : `<b>${esc(w)}</b><small>No entry for this word yet.</small>`);
+  p.hidden = false; const pw = p.offsetWidth, phh = p.offsetHeight;
+  let x = Math.min(Math.max(8, r.left), window.innerWidth - pw - 8), y = r.top - phh - 8; if (y < 8) y = r.bottom + 8;
   p.style.left = x + 'px'; p.style.top = y + 'px';
 }
 function hidePop() { $('#pop').hidden = true; }
@@ -315,7 +318,7 @@ $('#btnMode').onclick = () => {
 function setExam(on) {
   S.exam = on; document.body.classList.toggle('exam', on); $('#btnMode').textContent = on ? '🕑 Exam' : '🎧 Practice'; $('#btnMode').classList.toggle('on', on);
   $('#examnote').hidden = !on; au.pause(); seekG(0, false); bPlay.disabled = false; bPlay.textContent = '▶';
-  if (on) { closeTr(); closeSheet(); au.playbackRate = 1; $('#speed').value = '1'; }
+  if (on) { closeTr(); au.playbackRate = 1; $('#speed').value = '1'; }
 }
 
 /* ---------- zoom ---------- */

@@ -156,6 +156,9 @@ for q in qs:
 STM = {L: [49.8, y0, 229.3, 25.3] for L, y0 in zip('ABCDEF', [439.0, 479.8, 520.6, 561.4, 602.3, 643.1])}
 # titles per chapter for transcript pane
 data = dict(id=PID, title='Listening · Oct/Nov 2025 · Paper 11', code='0520/11/O/N/25', pages=[1,3,4,5,6,7,8,9,10,11,12,13,14,15], W=W, H=H, chapters=chs, q=qs, tr=tr, audio=f'audio/{PID}.mp3', enc=ENC, stm=STM, helpMax=2, words=WORDS, pics=PICS, parts=[dict(src=f'audio/{PID}_a.mp3', start=0), dict(src=f'audio/{PID}_b.mp3', start=1538)], dur=3055.26)
+try:
+    import importlib; data['phr'] = importlib.import_module('phr_'+PID).PHR
+except ImportError: data['phr'] = []
 json.dump(data, open(f'{OUT}/data/{PID}.json', 'w'), ensure_ascii=False)
 # ---- pages
 d = pymupdf.open('/mnt/user-data/uploads/0520 2/0520_w25/0520_w25_qp_11.pdf')
