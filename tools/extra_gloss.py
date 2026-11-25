@@ -28,4 +28,5 @@ EX = {
 "tramway":["tram","m."],"tropicale":["tropical","adj. f."],"valeur":["value","f."],"veste":["jacket","f."],"vois":["(I/you) see","voir"],"voit":["sees","voir · il/elle/on"],"zut":["damn!, oh no!","interjection"],
 "écoliers":["schoolchildren","m. pl."],"écrite":["written","adj. f. · épreuve écrite = written test"],"écrivant":["writing","écrire · present participle"],"électricien":["electrician","m."],"électriciens":["electricians","m. pl."],
 "électro":["electro-","électroménager = household appliances"],"épreuve":["test, challenge","f."],"éteinte":["switched off, out","éteindre · past participle f."],"fiançailles":["engagement (to marry)","f. pl."],
+"feuille":["sheet (of paper)","f. · feuille de réponses = answer sheet"],"indiquées":["indicated, shown","indiquer · past participle f. pl."],"recopier":["to copy out","verb"],"suivez":["follow","suivre · vous (command)"],
 }

@@ -18,7 +18,6 @@ button,select{font:inherit}
 #chap,#speed,#trChap{border:1px solid #ccd;border-radius:8px;padding:6px;background:#fff;max-width:150px}
 #examnote{background:#fff3cd;border-bottom:1px solid #e6d28a;padding:6px 10px;font-size:13px}
 body.exam #chap,body.exam #speed,body.exam #bTr,body.exam #bBack,body.exam #bFwd,body.exam #seek{display:none}
-body.exam .pill,body.exam .dxm{display:none!important}
 #wrap{flex:1 1 auto;display:flex;min-height:0}
 #pages{flex:1 1 auto;overflow:auto;padding:10px;-webkit-overflow-scrolling:touch}
 #pagesIn{margin:0 auto;transition:width .15s}
@@ -99,3 +98,7 @@ body.exam .pill,body.exam .dxm{display:none!important}
 body.shOpen #pages{padding-bottom:56dvh}
 .dq{box-shadow:none!important;background:#ffd9a0}
 @media(min-width:821px){body.trOpen #sheet{right:min(40%,520px)}}
+
+#helpnote{display:block;width:100%;border:0;background:#fde4e4;color:#8a1c1c;padding:6px 10px;font-size:13px;cursor:pointer;text-align:left}
+.whl{position:absolute;background:rgba(244,163,0,.35);outline:.25cqw solid var(--amber);border-radius:.6cqw;pointer-events:none}
+.dxm.heard{font-size:3.6cqw}

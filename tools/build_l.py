@@ -2,7 +2,7 @@
 import re, json, os, sys, subprocess, shutil
 sys.path.insert(0, '/home/claude/build/L')
 import pymupdf
-from qdata_w25_11 import Q, CHAPTERS, ANS_MS
+from qdata_w25_11 import Q, CHAPTERS, ANS_MS, DX
 PID = 'w25_11'
 OUT = '/home/claude/build/L/app'
 os.makedirs(f'{OUT}/img/{PID}', exist_ok=True); os.makedirs(f'{OUT}/data', exist_ok=True); os.makedirs(f'{OUT}/audio', exist_ok=True)
@@ -108,7 +108,34 @@ for q in qs:
                     if i >= 0: x['hl'] = [li, i, i + len(x['quote'])]; break
             if x['hl'] is None: miss.append((q['n'], 'QUOTE ' + x['quote']))
 print('missing evidence:', miss)
+for q in qs:
+    q['dx'] = []
+    for (L, note, quote) in DX.get(q['n'], []):
+        hl = None
+        if quote:
+            for li, ln in enumerate(tr[q['ch']]):
+                if 't' in ln:
+                    i = nm(ln['t']).find(nm(quote))
+                    if i >= 0: hl = [li, i, i + len(quote)]; break
+            if hl is None: miss.append((q['n'], 'DX ' + quote))
+        q['dx'].append(dict(L=L, note=note, quote=quote, hl=hl))
+print('missing after dx:', miss)
 chs = [dict(id=i, label=lb, t=t) for i, lb, t in CHAPTERS]
+_qp = pymupdf.open('/mnt/user-data/uploads/0520 2/0520_w25/0520_w25_qp_11.pdf')
+WORDS = {}
+for _p in [3,4,5,6,7,8,9,10,11,12,13,14,15]:
+    _l = []
+    for w in _qp[_p - 1].get_text('words'):
+        t_ = w[4].strip()
+        if not t_ or re.fullmatch(r'[\d\[\]:./]+|[A-F]|©|UCLES|Turn|over\]?|\[Turn', t_): continue
+        _l.append([t_, round(w[0], 1), round(w[1], 1), round(w[2], 1), round(w[3], 1)])
+    WORDS[_p] = _l
+PICS = []
+for q in qs:
+    if q['pic']:
+        for i, o in enumerate(q['opts']):
+            b = q['boxes'][i]
+            PICS.append(dict(n=q['n'], L=o['L'], x=round(106.3 + 99.2 * i, 1), y=round(b['y'] - 116.3, 1), w=85, h=85, fr=o['fr'], en=o['en'], p=q['page']))
 sys.path.insert(0, '/home/claude/build')
 import secrets, base64
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
@@ -122,13 +149,13 @@ def encrypt(obj, codes):
     for c in codes:
         wiv = secrets.token_bytes(12); w.append(dict(iv=b64(wiv), ct=b64(AESGCM(kdf(c, salt)).encrypt(wiv, K, None))))
     return dict(salt=b64(salt), iv=b64(iv), ct=b64(ct), w=w)
-KEY = {q['n']: dict(a=q['ans'], hl=q['hl']) for q in qs}
+KEY = {q['n']: dict(a=q['ans'], hl=q['hl'], x=q['x']) for q in qs}
 ENC = encrypt(KEY, [os.environ['L_CODE_PAPER'], os.environ['L_CODE_MASTER']])  # teacher codes come from the environment, never from the repo
 for q in qs:
-    for k in ('ans', 'ev', 'hl'): q.pop(k, None)
+    for k in ('ans', 'ev', 'hl', 'x'): q.pop(k, None)
 STM = {L: [49.8, y0, 229.3, 25.3] for L, y0 in zip('ABCDEF', [439.0, 479.8, 520.6, 561.4, 602.3, 643.1])}
 # titles per chapter for transcript pane
-data = dict(id=PID, title='Listening · Oct/Nov 2025 · Paper 11', code='0520/11/O/N/25', pages=[1,3,4,5,6,7,8,9,10,11,12,13,14,15], W=W, H=H, chapters=chs, q=qs, tr=tr, audio=f'audio/{PID}.mp3', enc=ENC, stm=STM)
+data = dict(id=PID, title='Listening · Oct/Nov 2025 · Paper 11', code='0520/11/O/N/25', pages=[1,3,4,5,6,7,8,9,10,11,12,13,14,15], W=W, H=H, chapters=chs, q=qs, tr=tr, audio=f'audio/{PID}.mp3', enc=ENC, stm=STM, helpMax=2, words=WORDS, pics=PICS, parts=[dict(src=f'audio/{PID}_a.mp3', start=0), dict(src=f'audio/{PID}_b.mp3', start=1538)], dur=3055.26)
 json.dump(data, open(f'{OUT}/data/{PID}.json', 'w'), ensure_ascii=False)
 # ---- pages
 d = pymupdf.open('/mnt/user-data/uploads/0520 2/0520_w25/0520_w25_qp_11.pdf')

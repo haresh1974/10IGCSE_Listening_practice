@@ -178,3 +178,43 @@ CHAPTERS = [
  ('c9', 'Q9–14 Monaco', 375.4), ('c15', 'Q15–19 Amis', 689.0), ('c20', 'Q20–24 Aubin', 1018.3), ('c25', 'Q25–28 Donia', 1323.5),
  ('c29', 'Q29–34 Félix', 1545.5), ('c35', 'Q35–37 Adélie', 2101.0)]
 ANS_MS = {1:'C',2:'A',3:'D',4:'A',5:'B',6:'C',7:'B',8:'C',9:'B',10:'D',11:'B',12:'A',13:'C',14:'D',15:'D',16:'A',17:'E',18:'B',19:'F',20:'B',21:'C',22:'A',23:'A',24:'C',25:'C',26:'A',27:'B',28:'A',29:'A',30:'D',31:'B',32:'C',33:'D',34:'B',35:'C/E',36:'A/E',37:'B/D'}
+
+# ---------- POSSIBLE DISTRACTORS (shown on request; must never point to the answer) ----------
+# (L or None, note, quote). L = an option that is wrong but sounds possible; None = a heard word/number that is a trap.
+# Rule: at least 2 options (answers+1 for "choose two") must stay un-flagged, so the answer cannot be worked out by elimination.
+DX = {
+ 2: [('D', 'You will hear about the weather (“il fait beau”). Ask yourself what that means for this question.', 'Il fait beau aujourd’hui')],
+ 5: [(None, 'She says “des légumes” (vegetables) in general first. Listen for the one vegetable she actually names.', 'des légumes')],
+ 6: [('B', 'You will hear “l’été” (summer). It does not tell you what she wants to buy.', 'pour l’été'), ('D', 'You will hear “l’été” (summer). It does not tell you what she wants to buy.', 'pour l’été')],
+ 11: [(None, 'You will hear TWO times: “16 heures” and a later one. The question asks when the evenings FINISH.', 'commencent à 16 heures')],
+ 12: [('B', 'You will hear “musiciens et danseurs”. Check WHEN and WHERE they are mentioned.', 'avec musiciens et danseurs')],
+ 13: [('A', 'You will hear the general word “cadeaux”. The question wants the example that is given.', 'des cadeaux pour votre famille')],
+ 15: [('C', 'This statement is never said about any of the friends: it is the extra one.', '')],
+ 16: [('C', 'This statement is never said about any of the friends: it is the extra one.', '')],
+ 17: [('C', 'This statement is never said about any of the friends: it is the extra one.', '')],
+ 18: [('C', 'This statement is never said about any of the friends: it is the extra one.', '')],
+ 19: [('C', 'This statement is never said about any of the friends: it is the extra one.', '')],
+ 20: [('A', 'You will hear “des milliers d’euros”. Listen to what Aubin himself took home.', 'des milliers d’euros')],
+ 21: [('A', 'You will hear about sport (“épreuves sportives”). Listen to whether he had to do any.', 'pas d’épreuves sportives')],
+ 22: [('C', 'You will hear about clothes (“s’habiller”). Listen to who chose them.', 'on pouvait s’habiller comme on voulait')],
+ 23: [('B', 'You will hear about the stress of being on TV. Check whether it is what Aubin says, or what people THINK.', 'le stress d’être à la télé')],
+ 24: [('B', 'You will hear about the lights (“projecteurs”). Listen to what Aubin says about them.', 'à cause des projecteurs')],
+ 25: [('B', 'You will hear about a written test (“épreuve écrite”). Listen to which shows it is for.', 'Pour d’autres jeux, ils doivent aussi passer une épreuve écrite')],
+ 26: [('C', 'You will hear “spectateurs”. Listen to whether they are there for this part.', 'Il n’y a pas de spectateurs')],
+ 27: [('A', 'You will hear “intelligent”. Is it the most important quality for Donia?', 'plus important que quelqu’un de très intelligent')],
+ 28: [('B', 'You will hear “danser”. Does Donia ask for it?', 'On ne leur demande pas de danser')],
+ 29: [('C', 'You will hear about pupils (“écoliers”) cleaning. Check exactly what they cleaned.', 'ont nettoyé leur quartier'), ('D', 'You will hear “130 000”. Check whether that is Toulouse or somewhere else.', 'dans toute la France, 130 000 participants')],
+ 30: [('B', 'You will hear about glass bottles. Check WHO collected them.', 'Un de mes collègues s’est chargé d’une collecte de bouteilles en verre')],
+ 31: [('A', 'You will hear about renting (“louer”). Listen to whether Athéna did.', 'Elle aurait pu en louer une'), ('D', 'You will hear about an evening dress. Check WHOSE dress it was.', 'la robe de soirée de sa meilleure copine')],
+ 32: [('A', 'You will hear about the number of devices (“huit appareils”, “très peu”). Check who has how many.', 'j’en ai très peu'), ('B', 'You will hear about old phones. Listen to where people keep them.', 'garder leurs anciens portables dans des tiroirs')],
+ 33: [('A', 'You will hear “piles” described as difficult. Compare with what he says next.', 'les piles sont très difficiles à recycler'), ('C', 'You will hear “microplastiques” described as a disaster. Compare with what he says next.', 'Les microplastiques aussi sont une catastrophe')],
+ 34: [('A', 'You will hear about sorting (“trier”). Is it what he calls the MOST important?', 'continuer à trier le plus possible'), ('D', 'You will hear about taking part in eco projects. Is it the MOST important?', 'participer à ces projets écologiques')],
+ 35: [('B', 'You will hear “la vie de château n’est pas une vie de rêve”. Read the statement again carefully.', 'la vie de château n’est pas une vie de rêve'), ('D', 'You will hear about the cost of repairs. Compare the numbers carefully.', 'coûtent deux fois plus cher que pour une maison')],
+ 36: [('C', 'You will hear about the American group and how long they stay. Listen to the exact length.', 'pour un long week-end'), ('D', 'You will hear about a tour guide. Listen to who will be the guide.', 'elle va aussi jouer le rôle de guide touristique')],
+ 37: [('A', 'You will hear about a travel agency. Listen to whether it has already started.', 'doit venir bientôt'), ('C', 'You will hear about Marina’s birthday. Check WHERE she celebrated it.', 'dans un château en Suisse')],
+}
+# safety check: leaving at least len(answer)+1 options un-flagged
+for _q in Q:
+    _fl = {l for (l, n_, q_) in DX.get(_q['n'], []) if l}
+    assert len(_q['opts']) - len(_fl) >= len(_q['ans']) + 1, ('DX reveals the answer', _q['n'])
+    assert not (_fl & set(_q['ans'])), ('DX flags a correct option', _q['n'])
