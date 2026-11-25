@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from dxfr_w25_11 import FRX, FRDX, NONE as NONE_FR
 import re, json, os, sys, subprocess, shutil
 sys.path.insert(0, '/home/claude/build/L')
 import pymupdf
@@ -30,7 +31,7 @@ for q in Q:
     n = q['n']; o = dict(n=n, ch=q['ch'], kind=q['kind'], stem=q['stem'], stem_en=q['stem_en'], ans=q['ans'], pic=q['pic'])
     L = sorted(q['opts'])
     o['opts'] = [dict(L=l, fr=q['opts'][l][0], en=q['opts'][l][1]) for l in L]
-    o['x'] = {l: dict(k=v[0], note=v[1], quote=v[2]) for l, v in q['x'].items()}
+    o['x'] = {l: dict(k=v[0], note=v[1], fr=(FRX.get(n, {}).get(l) or NONE_FR), quote=v[2]) for l, v in q['x'].items()}
     o['ev'] = q['ev']
     if n in PIC:
         pg, y = PIC[n]; o['page'] = pg
@@ -111,6 +112,8 @@ print('missing evidence:', miss)
 for q in qs:
     q['dx'] = []
     for (L, note, quote) in DX.get(q['n'], []):
+        pass
+    for (L, note, quote) in DX.get(q['n'], []):
         hl = None
         if quote:
             for li, ln in enumerate(tr[q['ch']]):
@@ -118,7 +121,16 @@ for q in qs:
                     i = nm(ln['t']).find(nm(quote))
                     if i >= 0: hl = [li, i, i + len(quote)]; break
             if hl is None: miss.append((q['n'], 'DX ' + quote))
-        q['dx'].append(dict(L=L, note=note, quote=quote, hl=hl))
+        q['dx'].append(dict(L=L, kind='heard', note=note, fr=FRDX[q['n']][L], quote=quote, hl=hl))
+# add 'not mentioned' flags while at least answers+1 options stay unflagged (never reveals the answer)
+for q in qs:
+    fl = {d['L'] for d in q['dx'] if d['L']}; cap = len(q['opts']) - len(q['ans']) - 1 - len(fl)
+    if q['kind'] == 'letter': continue
+    for L in sorted(q['x']):
+        if cap <= 0: break
+        if q['x'][L]['k'] == 'none' and L not in fl:
+            q['dx'].append(dict(L=L, kind='none', note='Not mentioned anywhere in the recording.', fr=NONE_FR, quote='', hl=None)); cap -= 1; fl.add(L)
+    assert len(q['opts']) - len(fl) >= len(q['ans']) + 1 and not (fl & set(q['ans'])), q['n']
 print('missing after dx:', miss)
 chs = [dict(id=i, label=lb, t=t) for i, lb, t in CHAPTERS]
 _qp = pymupdf.open('/mnt/user-data/uploads/0520 2/0520_w25/0520_w25_qp_11.pdf')

@@ -103,3 +103,15 @@ body.exam #chap,body.exam #speed,body.exam #bTr,body.exam #bBack,body.exam #bFwd
 u.ph{position:absolute;pointer-events:none;border-bottom:.45cqw dotted #e07b00;z-index:1}
 .w.ph,.ph.trph{border-bottom:2px dotted #e07b00}
 #pop .pb{background:rgba(255,255,255,.12);border-radius:6px;padding:4px 6px;margin-bottom:5px}
+
+.dxm.nomen{background:rgba(110,120,140,.18);outline:.3cqw solid #6b7488;color:#4a5568;font-size:3.6cqw}
+.dxc{max-height:60cqw;overflow:auto}
+.dxc .en{display:block}.dxc .fr{display:block;color:#3b4a66;font-style:italic;font-size:2cqw}
+.dxc .it{padding-left:4cqw;position:relative}.dxc .it .L{position:absolute;left:0;top:.1cqw;margin:0}
+.dxc .it .L.nm{background:#6b7488}.dxc b.nn{color:#4a5568;margin-top:1cqw}.dxc b.ok{color:#14702e;margin-top:1cqw}
+.dxc .acts{margin-top:1.2cqw;display:flex;gap:1cqw}.dxc .acts button{border:0;background:var(--navy);color:#fff;border-radius:1.4cqw;padding:.8cqw 1.6cqw;font-size:2cqw;cursor:pointer}
+
+.dxc{font-size:1.75cqw!important;padding:1cqw 4.5cqw 1cqw 1.4cqw!important}
+.dxc .sub{font-size:1.5cqw!important}.dxc .fr{font-size:1.55cqw!important}
+.dxc .it{padding-left:3.4cqw!important}.dxc .it .L{width:2.6cqw!important;height:2.6cqw!important;line-height:2.6cqw!important;font-size:1.6cqw!important}
+.dxc .acts button{font-size:1.6cqw!important}.dxc .cx{font-size:2.2cqw!important}

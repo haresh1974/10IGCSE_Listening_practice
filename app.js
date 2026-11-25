@@ -147,6 +147,8 @@ function pagePointer(e, pg, hover) {
 }
 function onPageClick(e) {
   const t = e.target.closest('button'); if (!t) { closePick(); const pg = e.target.closest('.pg'); if (pg) pagePointer(e, pg, false); return; }
+  if (t.dataset.a === 'again') { const q = byN(+t.dataset.n); if (S.exam) return; jumpTo(q.ch); return; }
+  if (t.dataset.a === 'trq') { const q = byN(+t.dataset.n); if (S.exam) return; au.pause(); openTr(q.ch); return; }
   if (t.dataset.a === 'cx') { const c = t.closest('.dxc'); delete S.dx[+c.dataset.n]; paintDx(); if (!$('#tr').hidden) renderTr(S.trCh); return; }
   const n = +(t.dataset.n || (t.closest('.pill') || {}).dataset?.n);
   if (t.closest('.pill')) {
@@ -190,15 +192,15 @@ function paintDx() {
     addCallout(pg, q);
     q.dx.forEach(d => {
       if (!d.L) return;
-      if (q.kind === 'letter') { const r = D.stm && D.stm[d.L]; if (r) addMark(pg, r); }
-      else { const b = q.boxes.find(b => b.L === d.L); if (b) addMark(pg, [b.x - 1, b.y - 1, b.w + 2, b.h + 2]); }
+      if (q.kind === 'letter') { const r = D.stm && D.stm[d.L]; if (r) addMark(pg, r, d.kind); }
+      else { const b = q.boxes.find(b => b.L === d.L); if (b) addMark(pg, [b.x - 1, b.y - 1, b.w + 2, b.h + 2], d.kind); }
     });
   });
 }
-function addMark(ov, r) {
-  const d = document.createElement('div'); d.className = 'dxm heard'; const W = D.W, H = D.H;
+function addMark(ov, r, kind) {
+  const d = document.createElement('div'); d.className = 'dxm ' + (kind === 'none' ? 'nomen' : 'heard'); const W = D.W, H = D.H;
   d.style.left = r[0] / W * 100 + '%'; d.style.top = r[1] / H * 100 + '%'; d.style.width = r[2] / W * 100 + '%'; d.style.height = r[3] / H * 100 + '%';
-  d.textContent = '⚠'; ov.appendChild(d);
+  d.textContent = kind === 'none' ? '∅' : '⚠'; ov.appendChild(d);
 }
 
 /* ---------- distractor callout, next to the question ---------- */
@@ -206,13 +208,17 @@ function addCallout(ov, q) {
   const pl = ov.querySelector(`.pill[data-n="${q.n}"]`); if (!pl) return;
   const c = document.createElement('div'); c.className = 'dxc'; c.dataset.n = q.n;
   c.style.right = pl.style.right; c.style.top = `calc(${pl.style.top} + 4.4cqw)`;
-  let h = '<b>⚠ Possible distractors</b><span class="sub">heard but not related to the question</span>';
-  if (!q.dx.length) h += '<div class="it">Nothing tricky here. Listen for the key idea.</div>';
-  q.dx.forEach(d => {
-    const o = d.L ? q.opts.find(o => o.L === d.L) : null;
-    h += `<div class="it">${d.L ? `<span class="L">${d.L}</span>` : ''}${o && q.pic ? '' : ''}${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</div>`;
-  });
-  if (S.key && S.key[q.n]) h += `<div class="it ok">✅ Answer: ${S.key[q.n].a.join(' + ')}</div>`;
+  const row = (d, tag) => `<div class="it">${d.L && d.L !== '_' ? `<span class="L ${tag}">${d.L}</span>` : ''}<span class="en">${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</span><span class="fr">🇫🇷 ${esc(d.fr || '')}</span></div>`;
+  const heard = q.dx.filter(d => d.kind !== 'none'), none = q.dx.filter(d => d.kind === 'none');
+  let h = '<b>⚠ Possible distractors <span class="sub">(heard but not related to the question)</span></b><span class="sub">Les pièges : mots entendus mais sans rapport avec la question</span>';
+  if (heard.length) heard.forEach(d => { h += row(d, 'hd'); }); else if (!none.length) h += '<div class="it"><span class="en">No tricky word here. Listen for the key idea.</span><span class="fr">🇫🇷 Pas de mot piège ici. Écoutez l’idée principale.</span></div>';
+  if (none.length) { h += '<b class="nn">∅ Not mentioned in the recording <span class="sub">(Jamais mentionné)</span></b>'; none.forEach(d => { h += row(d, 'nm'); }); }
+  const k = S.key && S.key[q.n];
+  if (k && S.reveal) {
+    h += `<b class="ok">✅ Answer: ${k.a.join(' + ')}</b>`;
+    q.opts.filter(o => !k.a.includes(o.L)).forEach(o => { if (q.dx.some(d => d.L === o.L) && !(k.x[o.L] && k.x[o.L].k !== 'none')) return; const x = (k.x || {})[o.L]; if (x) h += row({ L: o.L, note: x.note, fr: x.fr, quote: x.quote }, x.k === 'none' ? 'nm' : 'hd'); });
+  }
+  h += `<div class="acts"><button data-a="again" data-n="${q.n}">🔁 Listen again · Réécouter</button><button data-a="trq" data-n="${q.n}">📄 Transcript</button></div>`;
   c.innerHTML = h + '<button class="cx" data-a="cx">✕</button>'; ov.appendChild(c);
 }
 
@@ -366,6 +372,7 @@ function applyUnlockFromSession() { try { const v = sessionStorage.getItem('fhl-
 function afterUnlock() { $('#btnLock').textContent = '🔓'; $('#btnCheck').hidden = false; S.noHelp = false; $('#helpnote').hidden = true; }
 function setReveal(on) { S.reveal = on; paintReveal(); updScore(); if (!$('#tr').hidden) renderTr(S.trCh); }
 function paintReveal() {
+  paintDx();
   $$('.bx,.lb').forEach(b => b.classList.remove('right', 'wrong')); $$('.lbans').forEach(e => e.remove());
   if (!S.reveal || !S.key) return;
   $$('.bx').forEach(b => { const n = +b.dataset.n, k = S.key[n]; if (!k) return; const on = chosen(n).includes(b.dataset.l), ok = k.a.includes(b.dataset.l);
@@ -382,7 +389,7 @@ $('#btnCheck').onclick = () => {
   D.q.forEach(q => {
     const k = S.key[q.n]; if (!k) return; const mine = chosen(q.n); const okAll = mine.length === k.a.length && mine.every(l => k.a.includes(l));
     let inner = `<div class="h">Q${q.n} ${okAll ? '✅' : '❌'} <small>Your answer: ${mine.length ? mine.join(' + ') : '—'} · Correct: ${k.a.join(' + ')}</small></div>`;
-    mine.filter(l => !k.a.includes(l)).forEach(l => { const x = (k.x || {})[l]; if (x) inner += `<div style="margin-top:3px">“${l}” is wrong. ${esc(x.note)}${x.quote ? ' <i>“' + esc(x.quote) + '”</i>' : ''}</div>`; });
+    mine.filter(l => !k.a.includes(l)).forEach(l => { const x = (k.x || {})[l]; if (x) inner += `<div style="margin-top:3px">“${l}” is wrong. ${esc(x.note)}${x.quote ? ' <i>“' + esc(x.quote) + '”</i>' : ''}<br><small>🇫🇷 ${esc(x.fr || '')}</small></div>`; });
     if (!mine.length) inner += '<div style="margin-top:3px">No answer given.</div>';
     h += `<div class="ck ${okAll ? 'good' : 'bad'}">${inner}</div>`;
   });
