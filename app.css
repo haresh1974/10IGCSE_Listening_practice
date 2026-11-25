@@ -117,3 +117,8 @@ u.ph{position:absolute;pointer-events:auto;cursor:pointer;z-index:2;text-decorat
 .dxc .acts button{font-size:1.6cqw!important}.dxc .cx{font-size:2.2cqw!important}
 
 #legend{background:#fff4e0;border-left:4px solid #e07b00;padding:6px 10px;margin:8px auto;max-width:900px;font-size:13px;border-radius:6px}
+
+.dxc details.syn{margin-top:1cqw;border-top:.2cqw dashed #e0b27a;padding-top:.8cqw}.dxc summary{cursor:pointer;font-weight:700;color:#14213d}
+.dxc .it .L.sy{background:#14213d}.dxc .sy2{font-style:normal;color:#14213d}.dxc .sy2 small{color:#4a5568}
+
+.dxc .it b{display:inline;color:#14213d}

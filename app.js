@@ -209,9 +209,22 @@ function addCallout(ov, q) {
   c.style.right = pl.style.right; c.style.top = `calc(${pl.style.top} + 4.4cqw)`;
   const row = (d, tag, chip) => `<div class="it">${chip && d.L && d.L !== '_' ? `<span class="L ${tag}">${d.L}</span>` : ''}<span class="en">${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</span><span class="fr">🇫🇷 ${esc(d.fr || '')}</span></div>`;
   const heard = q.dx.filter(d => d.kind !== 'none'), none = q.dx.filter(d => d.kind === 'none');
-  let h = '<b>⚠ Possible distractors <span class="sub">(heard but not related to the question)</span></b><span class="sub">Les pièges : mots entendus mais sans rapport avec la question</span>';
-  if (heard.length) heard.forEach(d => { h += row(d, 'hd', q.kind === 'letter'); }); else if (!none.length) h += '<div class="it"><span class="en">No tricky word here. Listen for the key idea.</span><span class="fr">🇫🇷 Pas de mot piège ici. Écoutez l’idée principale.</span></div>';
-  if (none.length) h += '<div class="it nn2"><span class="en">Some of the options are never mentioned in the recording at all.</span><span class="fr">🇫🇷 Certaines options ne sont jamais mentionnées dans l’enregistrement.</span></div>';
+  let h = heard.length ? '<b>⚠ Possible distractors <span class="sub">(heard but not related to the question)</span></b><span class="sub">Les pièges : mots entendus mais sans rapport avec la question</span>' : '<b>🎧 Listening help <span class="sub">· Aide à l’écoute</span></b>';
+  if (heard.length) heard.forEach(d => { h += row(d, 'hd', q.kind === 'letter'); }); 
+  if (none.length) {
+    h += '<b class="nn">∅ Never said in the recording <span class="sub">(Jamais mentionné)</span></b>';
+    none.forEach(d => { const o = q.opts.find(o => o.L === d.L); if (!o) return;
+      h += `<div class="it"><span class="en">“${esc(o.fr)}” <small>(${esc(o.en)})</small> is not said at all.</span><span class="fr">🇫🇷 « ${esc(o.fr)} » n’est pas dit du tout.</span></div>`; });
+  }
+  // synonyms / paraphrases: shown for every option alike, so they never point to the answer
+  if (q.syn) {
+    const norm = x => x.toLowerCase().replace(/’/g, "'").replace(/\s+/g, ' '); const trText = norm((D.tr[q.ch] || []).map(l => l.t || '').join(' '));
+    let sh = '';
+    q.opts.forEach(o => { const ss = q.syn[o.L]; if (!ss) return;
+      sh += `<div class="it"><span class="L sy">${o.L}</span><span class="en"><b>${esc(o.fr)}</b> <small>(${esc(o.en)})</small></span>` +
+        ss.map(p => { const said = S.key && S.reveal && trText.includes(norm(p[0]).replace(/^(le|la|les|l'|un|une|des) /, '')); return `<span class="fr sy2">${said ? '✅ ' : '≈ '}${esc(p[0])} <small>= ${esc(p[1])}</small></span>`; }).join('') + '</div>'; });
+    h += `<details class="syn"><summary>🔁 Synonyms · Synonymes <small>(other words that may be used)</small></summary>${sh}</details>`;
+  }
   const k = S.key && S.key[q.n];
   if (k && S.reveal) {
     h += `<b class="ok">✅ Answer: ${k.a.join(' + ')}</b>`;

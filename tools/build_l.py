@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 from dxfr_w25_11 import FRX, FRDX, NONE as NONE_FR
+from syn_w25_11 import SYN
 import re, json, os, sys, subprocess, shutil
 sys.path.insert(0, '/home/claude/build/L')
 import pymupdf
@@ -131,6 +132,9 @@ for q in qs:
         if q['x'][L]['k'] == 'none' and L not in fl:
             q['dx'].append(dict(L=L, kind='none', note='Not mentioned anywhere in the recording.', fr=NONE_FR, quote='', hl=None)); cap -= 1; fl.add(L)
     assert len(q['opts']) - len(fl) >= len(q['ans']) + 1 and not (fl & set(q['ans'])), q['n']
+for q in qs:
+    q['syn'] = SYN.get(q['n'], {})
+    assert set(q['syn']) >= {o['L'] for o in q['opts']}, ('synonyms missing', q['n'], [o['L'] for o in q['opts'] if o['L'] not in q['syn']])
 print('missing after dx:', miss)
 chs = [dict(id=i, label=lb, t=t) for i, lb, t in CHAPTERS]
 _qp = pymupdf.open('/mnt/user-data/uploads/0520 2/0520_w25/0520_w25_qp_11.pdf')
