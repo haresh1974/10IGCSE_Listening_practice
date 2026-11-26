@@ -207,29 +207,17 @@ function addCallout(ov, q) {
   const pl = ov.querySelector(`.pill[data-n="${q.n}"]`); if (!pl) return;
   const c = document.createElement('div'); c.className = 'dxc'; c.dataset.n = q.n;
   c.style.right = pl.style.right; c.style.top = `calc(${pl.style.top} + 4.4cqw)`;
-  const row = (d, tag, chip) => `<div class="it">${chip && d.L && d.L !== '_' ? `<span class="L ${tag}">${d.L}</span>` : ''}<span class="en">${esc(d.note)}${d.quote ? ` <i>“${esc(d.quote)}”</i>` : ''}</span><span class="fr">🇫🇷 ${esc(d.fr || '')}</span></div>`;
-  const heard = q.dx.filter(d => d.kind !== 'none'), none = q.dx.filter(d => d.kind === 'none');
-  let h = heard.length ? '<b>⚠ Possible distractors <span class="sub">(heard but not related to the question)</span></b><span class="sub">Les pièges : mots entendus mais sans rapport avec la question</span>' : '<b>🎧 Listening help <span class="sub">· Aide à l’écoute</span></b>';
-  if (heard.length) heard.forEach(d => { h += row(d, 'hd', q.kind === 'letter'); }); 
-  if (none.length) {
-    h += '<b class="nn">∅ Never said in the recording <span class="sub">(Jamais mentionné)</span></b>';
-    none.forEach(d => { const o = q.opts.find(o => o.L === d.L); if (!o) return;
-      h += `<div class="it"><span class="en">“${esc(o.fr)}” <small>(${esc(o.en)})</small> is not said at all.</span><span class="fr">🇫🇷 « ${esc(o.fr)} » n’est pas dit du tout.</span></div>`; });
-  }
-  // synonyms / paraphrases: shown for every option alike, so they never point to the answer
-  if (q.syn) {
-    const norm = x => x.toLowerCase().replace(/’/g, "'").replace(/\s+/g, ' '); const trText = norm((D.tr[q.ch] || []).map(l => l.t || '').join(' '));
-    let sh = '';
-    q.opts.forEach(o => { const ss = q.syn[o.L]; if (!ss) return;
-      sh += `<div class="it"><span class="L sy">${o.L}</span><span class="en"><b>${esc(o.fr)}</b> <small>(${esc(o.en)})</small></span>` +
-        ss.map(p => { const said = S.key && S.reveal && trText.includes(norm(p[0]).replace(/^(le|la|les|l'|un|une|des) /, '')); return `<span class="fr sy2">${said ? '✅ ' : '≈ '}${esc(p[0])} <small>= ${esc(p[1])}</small></span>`; }).join('') + '</div>'; });
-    h += `<details class="syn"><summary>🔁 Synonyms · Synonymes <small>(other words that may be used)</small></summary>${sh}</details>`;
-  }
-  const k = S.key && S.key[q.n];
-  if (k && S.reveal) {
-    h += `<b class="ok">✅ Answer: ${k.a.join(' + ')}</b>`;
-    q.opts.filter(o => !k.a.includes(o.L)).forEach(o => { if (q.dx.some(d => d.L === o.L) && !(k.x[o.L] && k.x[o.L].k !== 'none')) return; const x = (k.x || {})[o.L]; if (x) h += row({ L: o.L, note: x.note, fr: x.fr, quote: x.quote }, x.k === 'none' ? 'nm' : 'hd', true); });
-  }
+  const k = S.key && S.reveal && S.key[q.n];
+  let h = '<b>🎧 Words from the recording <span class="sub">Mots entendus dans l’enregistrement</span></b>' +
+    '<span class="sub">In brackets: words from the transcript linked to each option. Some match the question, some are traps — you decide. · Entre parenthèses : des mots du texte liés à chaque option. À vous de décider.</span>';
+  q.opts.forEach(o => {
+    const hs = (q.heard && q.heard[o.L]) || [];
+    const tag = k ? (k.a.includes(o.L) ? '<span class="tg ok">✅ matches</span>' : '<span class="tg bad">⚠ distractor</span>') : '';
+    h += `<div class="it"><span class="L">${o.L}</span><span class="en"><b>${esc(o.fr)}</b> <small>(${esc(o.en)})</small></span>` +
+      hs.map(x => `<span class="hd2">( « ${esc(x.fr)} » = ${esc(x.en)} ) ${hs.length && tag}</span>`).join('') + '</div>';
+  });
+  if (k) q.opts.filter(o => !k.a.includes(o.L)).forEach(o => { const x = (k.x || {})[o.L]; if (x) h += `<div class="it why"><span class="L ${x.k === 'none' ? 'nm' : 'hd'}">${o.L}</span><span class="en">${esc(x.note)}</span><span class="fr">🇫🇷 ${esc(x.fr || '')}</span></div>`; });
+  if (k) h += `<b class="ok">✅ Answer: ${k.a.join(' + ')}</b>`;
   h += `<div class="acts"><button data-a="again" data-n="${q.n}">🔁 Listen again · Réécouter</button><button data-a="trq" data-n="${q.n}">📄 Transcript</button></div>`;
   c.innerHTML = h + '<button class="cx" data-a="cx">✕</button>'; ov.appendChild(c);
 }
